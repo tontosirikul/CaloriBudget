@@ -1,0 +1,126 @@
+// From https://www.prisma.io/docs/getting-started
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum MealType {
+  BREAKFAST
+  LUNCH
+  DINNER
+  SNACK
+}
+
+model User {
+  id Int @id @default(autoincrement())
+  email String  @unique
+  username  String
+  hashed_password String
+  dailyweights DailyWeight[]
+  goals Goal[]
+  dailyfoodlogs DailyFoodLog[]
+  foodvariants FoodVariant[]
+}
+
+// `Food` model is fundamental entity that holds nutritional information
+// about a certain type of food. It used as reference point when users want to 
+// add food to their entries.
+
+model Food {
+  id Int @id @default(autoincrement())
+  brand String?
+  description String
+  calories Decimal
+  carbs_gram Decimal
+  fat_gram Decimal
+  protein_gram Decimal
+  serving_size String
+  isGeneric Boolean
+  foodvariants FoodVariant[]
+  barcode String?
+}
+
+// `FoodVariant` model is a user-defined version of a `Food`
+// It includes a snapshot of `food` nutritional information, at created time
+// user can edit the expense depends on circumstance of logging the food entries
+// It will not be affected by chaning of `food` model to preserve 
+
+model FoodVariant {
+  id Int @id @default(autoincrement())
+  expense Decimal
+  foodentries FoodEntry[]
+  user User @relation(fields: [user_id], references: [id])
+  user_id Int
+  food Food @relation(fields: [food_id], references: [id])
+  food_id Int
+  // snapshot of food's nutritional
+  // this food variant will not be affected by changes
+  // of nutritional information in food table
+  brand_snapshot        String?
+  description_snapshot  String
+  calories_snapshot     Decimal
+  carbs_gram_snapshot   Decimal
+  fat_gram_snapshot     Decimal
+  protein_gram_snapshot Decimal
+  serving_size_snapshot String
+}
+
+model FoodEntry {
+  id Int @id @default(autoincrement())
+  number_of_servings Decimal
+  meal_type MealType
+  dailyfoodlog DailyFoodLog @relation(fields: [dailyfoodlog_id], references: [id])
+  dailyfoodlog_id Int
+  foodvariant FoodVariant? @relation(fields:[foodvariant_id],references: [id])
+  foodvariant_id Int?
+  // snapshot of food's nutritional and expense
+  // the food entry will not be affected to changes
+  // both of expense from variant and nutritional information from food
+  brand_snapshot String?
+  description_snapshot String
+  calories_snapshot Decimal
+  carbs_gram_snapshot Decimal
+  fat_gram_snapshot Decimal
+  protein_gram_snapshot Decimal
+  serving_size_snapshot String
+  expense_snapshot Decimal
+}
+
+model DailyFoodLog {
+  id Int @id @default(autoincrement())
+  date DateTime @db.Date
+  goal Goal @relation(fields: [goal_id], references: [id])
+  goal_id Int
+  user User @relation(fields: [user_id], references: [id])
+  user_id Int
+  foodentries FoodEntry[] 
+  @@unique([date, user_id],name:"UserDailyFoodLog")
+}
+
+model Goal {
+  id Int @id @default(autoincrement())
+  carbs_percentage_goal Int
+  fat_percentage_goal Int
+  protein_percentage_goal Int
+  carbs_gram_goal Decimal
+  fat_gram_goal Decimal
+  protein_gram_goal Decimal
+  calories_goal Decimal
+  expense_limit Decimal
+  user User @relation(fields: [user_id], references: [id])
+  user_id Int
+  dailyfoodlogs DailyFoodLog[]
+  createdAt DateTime @default(now())
+}
+
+model DailyWeight {
+  id Int @id @default(autoincrement())
+  weight Decimal 
+  date DateTime @db.Date
+  user User @relation(fields: [user_id], references: [id])
+  user_id Int
+}
